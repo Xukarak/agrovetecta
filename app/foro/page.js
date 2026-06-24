@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import Link from 'next/link'
 
 export default function Foro() {
   const [publicaciones, setPublicaciones] = useState([])
@@ -98,9 +99,10 @@ export default function Foro() {
         ) : (
           <div className="flex flex-col gap-4">
             {publicaciones.map((pub) => (
-              <div
+              <Link
+                href={`/foro/${pub.id}`}
                 key={pub.id}
-                className="bg-white rounded-2xl p-6 shadow-sm border border-green-100"
+                className="bg-white rounded-2xl p-6 shadow-sm border border-green-100 hover:shadow-md transition-shadow block"
               >
                 <h2 className="text-lg font-bold text-green-800 mb-2">
                   {pub.titulo}
@@ -112,7 +114,7 @@ export default function Foro() {
                   <span>👤 {pub.autor}</span>
                   <span>{new Date(pub.created_at).toLocaleDateString('es-CO')}</span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
