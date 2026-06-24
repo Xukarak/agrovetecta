@@ -18,6 +18,9 @@ export default function Navbar() {
         <Link href="/chat" className="hover:text-green-300 transition-colors">
           💬 Chat
         </Link>
+        <Link href="/perfil" className="hover:text-green-300 transition-colors">
+          👤 Perfil
+        </Link>
       </div>
 
     </nav>
