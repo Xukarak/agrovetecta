@@ -1,16 +1,69 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import Link from 'next/link'
 
-export default async function DetallePublicacion({ params }) {
-  const { id } = await params
+export default function DetallePublicacion({ params }) {
+  const [pub, setPub] = useState(null)
+  const [respuestas, setRespuestas] = useState([])
+  const [autor, setAutor] = useState('')
+  const [contenido, setContenido] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const [cargando, setCargando] = useState(true)
+  const [id, setId] = useState(null)
 
-  const { data: pub, error } = await supabase
-    .from('publicaciones')
-    .select('*')
-    .eq('id', id)
-    .single()
+  useEffect(() => {
+    async function init() {
+      const { id: paramId } = await params
+      setId(paramId)
+      await cargarDatos(paramId)
+    }
+    init()
+  }, [])
 
-  if (error || !pub) {
+  async function cargarDatos(paramId) {
+    const { data: publicacion } = await supabase
+      .from('publicaciones')
+      .select('*')
+      .eq('id', paramId)
+      .single()
+
+    const { data: resps } = await supabase
+      .from('respuestas')
+      .select('*')
+      .eq('publicacion_id', paramId)
+      .order('created_at', { ascending: true })
+
+    setPub(publicacion)
+    setRespuestas(resps || [])
+    setCargando(false)
+  }
+
+  async function handleRespuesta(e) {
+    e.preventDefault()
+    if (!contenido || !autor) return
+
+    setEnviando(true)
+    await supabase
+      .from('respuestas')
+      .insert([{ contenido, autor, publicacion_id: id }])
+
+    setContenido('')
+    setAutor('')
+    await cargarDatos(id)
+    setEnviando(false)
+  }
+
+  if (cargando) {
+    return (
+      <main className="min-h-screen bg-green-50 flex items-center justify-center">
+        <p className="text-gray-400">Cargando...</p>
+      </main>
+    )
+  }
+
+  if (!pub) {
     return (
       <main className="min-h-screen bg-green-50 flex items-center justify-center">
         <div className="text-center">
@@ -34,7 +87,6 @@ export default async function DetallePublicacion({ params }) {
 
         {/* Publicación principal */}
         <div className="bg-white rounded-2xl p-8 shadow-sm border border-green-100 mb-6">
-          
           <div className="flex items-center gap-3 mb-6">
             <div className="bg-green-100 text-green-800 font-bold text-xl rounded-full w-12 h-12 flex items-center justify-center">
               {pub.autor.charAt(0).toUpperCase()}
@@ -43,31 +95,77 @@ export default async function DetallePublicacion({ params }) {
               <p className="font-semibold text-green-800">{pub.autor}</p>
               <p className="text-xs text-gray-400">
                 {new Date(pub.created_at).toLocaleDateString('es-CO', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
+                  year: 'numeric', month: 'long', day: 'numeric'
                 })}
               </p>
             </div>
           </div>
-
-          <h1 className="text-2xl font-bold text-green-800 mb-4">
-            {pub.titulo}
-          </h1>
-          <p className="text-gray-600 leading-relaxed">
-            {pub.contenido}
-          </p>
-
+          <h1 className="text-2xl font-bold text-green-800 mb-4">{pub.titulo}</h1>
+          <p className="text-gray-600 leading-relaxed">{pub.contenido}</p>
         </div>
 
-        {/* Sección de respuestas — próximamente */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-green-100">
-          <h2 className="text-lg font-bold text-green-800 mb-2">
-            💬 Respuestas
+        {/* Respuestas */}
+        <div className="mb-6">
+          <h2 className="text-lg font-bold text-green-800 mb-4">
+            💬 Respuestas ({respuestas.length})
           </h2>
-          <p className="text-gray-400 text-sm">
-            Las respuestas de profesionales estarán disponibles pronto.
-          </p>
+
+          {respuestas.length === 0 ? (
+            <div className="bg-white rounded-2xl p-6 border border-green-100 text-center">
+              <p className="text-gray-400 text-sm">
+                Aún no hay respuestas. ¡Sé el primero en responder!
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {respuestas.map((resp) => (
+                <div key={resp.id} className="bg-white rounded-2xl p-5 shadow-sm border border-green-100">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="bg-green-700 text-white font-bold rounded-full w-8 h-8 flex items-center justify-center text-sm">
+                      {resp.autor.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-green-800 text-sm">{resp.autor}</p>
+                      <p className="text-xs text-gray-400">
+                        {new Date(resp.created_at).toLocaleDateString('es-CO')}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-gray-600 text-sm leading-relaxed">{resp.contenido}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Formulario de respuesta */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-green-100">
+          <h3 className="text-md font-bold text-green-800 mb-4">
+            ✍️ Escribe una respuesta
+          </h3>
+          <div className="flex flex-col gap-3">
+            <input
+              type="text"
+              placeholder="Tu nombre"
+              value={autor}
+              onChange={(e) => setAutor(e.target.value)}
+              className="border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-green-400"
+            />
+            <textarea
+              placeholder="Escribe tu respuesta..."
+              value={contenido}
+              onChange={(e) => setContenido(e.target.value)}
+              rows={3}
+              className="border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-green-400 resize-none"
+            />
+            <button
+              onClick={handleRespuesta}
+              disabled={enviando}
+              className="bg-green-700 text-white font-semibold py-2 rounded-xl hover:bg-green-800 transition-colors disabled:opacity-50"
+            >
+              {enviando ? 'Enviando...' : 'Enviar respuesta'}
+            </button>
+          </div>
         </div>
 
       </div>
