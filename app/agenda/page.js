@@ -13,6 +13,7 @@ export default function Agenda() {
   const [notas, setNotas] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [exito, setExito] = useState(false)
+  const [verificando, setVerificando] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
@@ -32,7 +33,9 @@ export default function Agenda() {
 
       if (!perfil || (perfil.estado === 'pendiente' && perfil.rol !== 'admin')) {
         router.push('/esperando')
+        return
       }
+      setVerificando(false)
     }
     verificarAcceso()
   }, [])
@@ -57,6 +60,18 @@ export default function Agenda() {
     setEnviando(false)
   }
 
+  if (verificando) {
+    return (
+      <main className="min-h-screen bg-green-50 flex items-center justify-center">
+        <div className="text-center">
+          <div
+            className="w-10 h-10 rounded-full border-4 border-green-200 border-t-green-700 animate-spin mx-auto mb-4"
+          />
+          <p className="text-gray-400 text-sm">Verificando acceso...</p>
+        </div>
+      </main>
+    )
+  }
   return (
     <main className="min-h-screen bg-green-50 py-10 px-6">
       <div className="max-w-2xl mx-auto">

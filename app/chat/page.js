@@ -12,6 +12,7 @@ export default function Chat() {
   const [enviando, setEnviando] = useState(false)
   const [perfil, setPerfil] = useState(null)
   const [perfilCargado, setPerfilCargado] = useState(false)
+  const [verificando, setVerificando] = useState(true)
   const bottomRef = useRef(null)
   const router = useRouter()
 
@@ -42,6 +43,7 @@ export default function Chat() {
           if (perfilData.tipo === 'ganadero') setCanal('ganaderia')
         }
         setPerfilCargado(true)
+        setVerificando(false)
       }
     init()
   }, [])
@@ -98,6 +100,17 @@ export default function Chat() {
 
   const esAmbos = perfil?.tipo === 'ambos' || perfil?.rol === 'admin' || perfil?.rol === 'profesional'
 
+  if (verificando) {
+    return (
+      <main className="min-h-screen bg-green-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-10 h-10 rounded-full border-4 border-green-200 border-t-green-700 animate-spin mx-auto mb-4" />
+          <p className="text-gray-400 text-sm">Verificando acceso...</p>
+        </div>
+      </main>
+    )
+  }
+  
   return (
     <div style={{ height: 'calc(100vh - 64px)' }} className="flex flex-col bg-green-50">
 
