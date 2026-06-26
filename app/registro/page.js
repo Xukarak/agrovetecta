@@ -44,9 +44,9 @@ export default function Registro() {
     })
 
     if (authError) {
-      setError('Error al crear la cuenta. Intenta con otro email.')
-      setEnviando(false)
-      return
+    setError(authError.message)
+    setEnviando(false)
+    return
     }
 
     // Crear perfil en tabla perfiles

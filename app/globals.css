@@ -10,12 +10,6 @@
   --texto-suave: #6B7280;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
 body {
   color: var(--texto);
   background-color: var(--fondo);
@@ -27,14 +21,6 @@ body {
   color: white;
 }
 
-/* Scrollbar sutil */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #F8FAF9;
-}
-::-webkit-scrollbar-thumb {
-  background: #52B788;
-  border-radius: 3px;
-}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #F8FAF9; }
+::-webkit-scrollbar-thumb { background: #52B788; border-radius: 3px; }
