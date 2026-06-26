@@ -102,11 +102,12 @@ export default function Registro() {
         </div>
 
         {/* Indicador de pasos */}
-        <div className="flex items-center gap-2 mb-8">
+        {/* Indicador de pasos */}
+        <div className="flex items-center justify-center gap-0 mb-8">
           {[1, 2, 3].map((n) => (
-            <div key={n} className="flex items-center gap-2 flex-1">
+            <div key={n} className="flex items-center">
               <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
                 style={{
                   backgroundColor: paso >= n ? '#1B4332' : '#F3F4F6',
                   color: paso >= n ? 'white' : '#9CA3AF'
@@ -116,7 +117,7 @@ export default function Registro() {
               </div>
               {n < 3 && (
                 <div
-                  className="flex-1 h-1 rounded"
+                  className="w-16 h-1 rounded"
                   style={{ backgroundColor: paso > n ? '#1B4332' : '#F3F4F6' }}
                 />
               )}
