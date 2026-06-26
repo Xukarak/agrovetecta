@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useRouter } from 'next/navigation'
 
 export default function Agenda() {
   const [tipo, setTipo] = useState('virtual')
@@ -12,6 +13,29 @@ export default function Agenda() {
   const [notas, setNotas] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [exito, setExito] = useState(false)
+  const router = useRouter()
+
+  useEffect(() => {
+    async function verificarAcceso() {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (!session) {
+        router.push('/login')
+        return
+      }
+
+      const { data: perfil } = await supabase
+        .from('perfiles')
+        .select('estado, rol')
+        .eq('usuario_id', session.user.id)
+        .single()
+
+      if (!perfil || (perfil.estado === 'pendiente' && perfil.rol !== 'admin')) {
+        router.push('/esperando')
+      }
+    }
+    verificarAcceso()
+  }, [])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -44,7 +68,6 @@ export default function Agenda() {
           Solicita una cita virtual o una visita a tu finca
         </p>
 
-        {/* Selector de tipo */}
         <div className="flex gap-3 mb-8">
           <button
             onClick={() => setTipo('virtual')}
@@ -68,7 +91,6 @@ export default function Agenda() {
           </button>
         </div>
 
-        {/* Formulario */}
         <div className="bg-white rounded-2xl p-8 shadow-sm border border-green-100">
 
           {exito && (

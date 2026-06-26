@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { useRouter } from 'next/navigation'
 
 export default function Chat() {
   const [mensajes, setMensajes] = useState([])
@@ -12,11 +13,16 @@ export default function Chat() {
   const [perfil, setPerfil] = useState(null)
   const [perfilCargado, setPerfilCargado] = useState(false)
   const bottomRef = useRef(null)
+  const router = useRouter()
 
   useEffect(() => {
     async function init() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
+          router.push('/login')
+          return
+        }
+
         const nombre = session.user.user_metadata?.nombre || session.user.email
         setAutor(nombre)
 
@@ -27,16 +33,16 @@ export default function Chat() {
           .single()
 
         if (perfilData) {
+          // Verificar acceso
+          if (perfilData.estado === 'pendiente' && perfilData.rol !== 'admin') {
+            router.push('/esperando')
+            return
+          }
           setPerfil(perfilData)
-          setPerfilCargado(true)
-          // Asignar canal según tipo de usuario
           if (perfilData.tipo === 'ganadero') setCanal('ganaderia')
-          else if (perfilData.tipo === 'agricultor') setCanal('agricultura')
-          // Si es ambos, puede elegir
         }
         setPerfilCargado(true)
       }
-    }
     init()
   }, [])
 
