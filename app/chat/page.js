@@ -7,25 +7,61 @@ export default function Chat() {
   const [mensajes, setMensajes] = useState([])
   const [contenido, setContenido] = useState('')
   const [autor, setAutor] = useState('')
+  const [canal, setCanal] = useState('agricultura')
   const [enviando, setEnviando] = useState(false)
+  const [perfil, setPerfil] = useState(null)
+  const [perfilCargado, setPerfilCargado] = useState(false)
   const bottomRef = useRef(null)
-  const mensajesRef = useRef(null)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    async function init() {
+      const { data: { session } } = await supabase.auth.getSession()
       if (session) {
         const nombre = session.user.user_metadata?.nombre || session.user.email
         setAutor(nombre)
-      }
-    })
 
+        const { data: perfilData } = await supabase
+          .from('perfiles')
+          .select('*')
+          .eq('usuario_id', session.user.id)
+          .single()
+
+        if (perfilData) {
+          setPerfil(perfilData)
+          setPerfilCargado(true)
+          // Asignar canal según tipo de usuario
+          if (perfilData.tipo === 'ganadero') setCanal('ganaderia')
+          else if (perfilData.tipo === 'agricultor') setCanal('agricultura')
+          // Si es ambos, puede elegir
+        }
+        setPerfilCargado(true)
+      }
+    }
+    init()
+  }, [])
+
+  useEffect(() => {
+    if (!canal) return
+    async function cargarMensajes() {
+    const { data } = await supabase
+      .from('mensajes')
+      .select('*')
+      .eq('canal', canal)
+      .order('created_at', { ascending: true })
+    setMensajes(data || [])
+    }
     cargarMensajes()
 
-    const canal = supabase
-      .channel('mensajes')
+    const suscripcion = supabase
+      .channel(`chat-${canal}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'mensajes' },
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'mensajes',
+          filter: `canal=eq.${canal}`
+        },
         (payload) => {
           setMensajes((prev) => [...prev, payload.new])
         }
@@ -33,21 +69,13 @@ export default function Chat() {
       .subscribe()
 
     return () => {
-      supabase.removeChannel(canal)
+      supabase.removeChannel(suscripcion)
     }
-  }, [])
+  }, [canal])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [mensajes])
-
-  async function cargarMensajes() {
-    const { data } = await supabase
-      .from('mensajes')
-      .select('*')
-      .order('created_at', { ascending: true })
-    setMensajes(data || [])
-  }
 
   async function handleEnviar(e) {
     e.preventDefault()
@@ -56,31 +84,69 @@ export default function Chat() {
     setEnviando(true)
     await supabase
       .from('mensajes')
-      .insert([{ contenido, autor }])
+      .insert([{ contenido, autor, canal }])
 
     setContenido('')
     setEnviando(false)
   }
 
+  const esAmbos = perfil?.tipo === 'ambos' || perfil?.rol === 'admin' || perfil?.rol === 'profesional'
+
   return (
     <div style={{ height: 'calc(100vh - 64px)' }} className="flex flex-col bg-green-50">
 
-      {/* Header */}
+      {/* Header con selector de canal */}
       <div style={{ backgroundColor: '#1B4332' }} className="text-white px-6 py-4 shrink-0">
-        <h1 className="text-lg font-bold">💬 Chat AgroVetecta</h1>
-        <p className="text-green-300 text-sm">Habla con un profesional en turno</p>
+        <div className="flex items-center justify-between max-w-2xl mx-auto">
+          <div>
+            <h1 className="text-lg font-bold">💬 Chat AgroVetecta</h1>
+            <p className="text-green-300 text-sm">
+              {canal === 'agricultura' ? '🌾 Canal Agricultura' : '🐄 Canal Ganadería'}
+            </p>
+          </div>
+
+          {/* Selector de canal — solo para usuarios tipo "ambos" o admin */}
+          {esAmbos && perfilCargado && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCanal('agricultura')}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                style={{
+                  backgroundColor: canal === 'agricultura' ? '#52B788' : 'rgba(255,255,255,0.1)',
+                  color: 'white'
+                }}
+              >
+                🌾 Agricultura
+              </button>
+              <button
+                onClick={() => setCanal('ganaderia')}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                style={{
+                  backgroundColor: canal === 'ganaderia' ? '#52B788' : 'rgba(255,255,255,0.1)',
+                  color: 'white'
+                }}
+              >
+                🐄 Ganadería
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Mensajes — área scrolleable */}
-      <div
-        ref={mensajesRef}
-        className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-3"
-      >
+      {/* Mensajes */}
+      <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-3">
         <div className="max-w-2xl w-full mx-auto flex flex-col gap-3">
           {mensajes.length === 0 ? (
             <div className="text-center text-gray-400 mt-20">
-              <p className="text-4xl mb-3">💬</p>
-              <p className="text-sm">No hay mensajes aún. ¡Sé el primero!</p>
+              <p className="text-4xl mb-3">
+                {canal === 'agricultura' ? '🌾' : '🐄'}
+              </p>
+              <p className="text-sm font-medium text-gray-500 mb-1">
+                Canal de {canal === 'agricultura' ? 'Agricultura' : 'Ganadería'}
+              </p>
+              <p className="text-xs text-gray-400">
+                No hay mensajes aún. ¡Sé el primero!
+              </p>
             </div>
           ) : (
             mensajes.map((msg) => (
@@ -92,12 +158,12 @@ export default function Chat() {
               >
                 <span className="text-xs text-gray-400 mb-1 px-1">{msg.autor}</span>
                 <div
-                  className={`px-4 py-2 rounded-2xl text-sm leading-relaxed ${
+                  className="px-4 py-2 rounded-2xl text-sm leading-relaxed"
+                  style={
                     msg.autor === autor
-                      ? 'text-white rounded-tr-sm'
-                      : 'bg-white text-gray-800 border border-green-100 rounded-tl-sm'
-                  }`}
-                  style={msg.autor === autor ? { backgroundColor: '#2D6A4F' } : {}}
+                      ? { backgroundColor: '#2D6A4F', color: 'white', borderRadius: '16px 16px 4px 16px' }
+                      : { backgroundColor: 'white', color: '#1A1A2E', border: '1px solid #D1FAE5', borderRadius: '16px 16px 16px 4px' }
+                  }
                 >
                   {msg.contenido}
                 </div>
@@ -108,7 +174,7 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Input — siempre visible abajo */}
+      {/* Input */}
       <div className="shrink-0 border-t border-green-100 bg-white px-6 py-4">
         <div className="max-w-2xl mx-auto flex flex-col gap-2">
           {!autor && (
@@ -123,7 +189,7 @@ export default function Chat() {
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="Escribe un mensaje..."
+              placeholder={`Escribe en canal ${canal === 'agricultura' ? 'Agricultura' : 'Ganadería'}...`}
               value={contenido}
               onChange={(e) => setContenido(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleEnviar(e)}
