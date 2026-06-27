@@ -11,6 +11,9 @@ export default function DetallePublicacion({ params }) {
   const [contenido, setContenido] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [cargando, setCargando] = useState(true)
+  const [likesCount, setLikesCount] = useState(0)
+  const [miLike, setMiLike] = useState(false)
+  const [usuarioId, setUsuarioId] = useState(null)
   const [id, setId] = useState(null)
 
   useEffect(() => {
@@ -50,7 +53,42 @@ export default function DetallePublicacion({ params }) {
 
     setPub(publicacion)
     setRespuestas(resps || [])
+    const { data: likesData } = await supabase
+      .from('likes')
+      .select('*')
+      .eq('publicacion_id', paramId)
+
+    setLikesCount(likesData?.length || 0)
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) {
+      setUsuarioId(session.user.id)
+      const miLikeData = likesData?.find(l => l.usuario_id === session.user.id)
+      setMiLike(!!miLikeData)
+    }
     setCargando(false)
+  }
+
+  async function handleLike() {
+    if (!usuarioId) return
+
+    if (miLike) {
+      await supabase
+        .from('likes')
+        .delete()
+        .eq('usuario_id', usuarioId)
+        .eq('publicacion_id', id)
+
+      setMiLike(false)
+      setLikesCount(prev => prev - 1)
+    } else {
+      await supabase
+        .from('likes')
+        .insert([{ usuario_id: usuarioId, publicacion_id: id }])
+
+      setMiLike(true)
+      setLikesCount(prev => prev + 1)
+    }
   }
 
   async function handleRespuesta(e) {
@@ -121,7 +159,30 @@ export default function DetallePublicacion({ params }) {
             </div>
           </div>
           <h1 className="text-2xl font-bold text-green-800 mb-4">{pub.titulo}</h1>
-          <p className="text-gray-600 leading-relaxed">{pub.contenido}</p>
+
+            {pub.foto_url && (
+              <img
+                src={pub.foto_url}
+                alt={pub.titulo}
+                className="w-full rounded-xl object-cover max-h-72 mb-4"
+              />
+            )}
+
+<p className="text-gray-600 leading-relaxed">{pub.contenido}</p>
+      <div className="flex items-center gap-2 mt-6 pt-4 border-t border-gray-100">
+        <button
+          onClick={handleLike}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all hover:scale-105"
+          style={{
+            backgroundColor: miLike ? '#F0FDF4' : '#F9FAFB',
+            color: miLike ? '#2D6A4F' : '#9CA3AF',
+            border: miLike ? '1px solid #A7F3D0' : '1px solid #E5E7EB'
+          }}
+        >
+          <span className="text-base">{miLike ? '❤️' : '🤍'}</span>
+          <span>{likesCount} {likesCount === 1 ? 'Me gusta' : 'Me gusta'}</span>
+        </button>
+      </div>
         </div>
 
         {/* Respuestas */}
