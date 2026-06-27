@@ -40,7 +40,13 @@ export default function Chat() {
             return
           }
           setPerfil(perfilData)
-          if (perfilData.tipo === 'ganadero') setCanal('ganaderia')
+          if (perfilData.tipo === 'ambos') {
+            setCanal(perfilData.especialidad_activa || 'agricultura')
+          } else if (perfilData.tipo === 'ganadero') {
+            setCanal('ganaderia')
+          } else {
+            setCanal('agricultura')
+          }
         }
         setPerfilCargado(true)
         setVerificando(false)
@@ -110,7 +116,7 @@ export default function Chat() {
       </main>
     )
   }
-  
+
   return (
     <div style={{ height: 'calc(100vh - 64px)' }} className="flex flex-col bg-green-50">
 
