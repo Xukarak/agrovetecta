@@ -4,6 +4,14 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useRouter } from 'next/navigation'
 
+const DEPARTAMENTOS_MUNICIPIOS = {
+  'Cesar': ['Valledupar', 'Aguachica', 'Curumaní', 'Chimichagua', 'Tamalameque', 'Pailitas', 'La Paz', 'San Alberto'],
+  'Magdalena': ['Santa Marta', 'Ciénaga', 'Fundación', 'El Banco', 'Plato'],
+  'Bolívar': ['Cartagena', 'Magangué', 'Mompox', 'El Carmen de Bolívar'],
+  'Córdoba': ['Montería', 'Sahagún', 'Lorica', 'Cereté', 'Montelíbano'],
+  'Sucre': ['Sincelejo', 'Corozal', 'Sampués', 'San Marcos'],
+}
+
 export default function Perfil() {
   const [usuario, setUsuario] = useState(null)
   const [perfil, setPerfil] = useState(null)
@@ -11,6 +19,15 @@ export default function Perfil() {
   const [citas, setCitas] = useState([])
   const [cargando, setCargando] = useState(true)
   const [cambiandoTipo, setCambiandoTipo] = useState(false)
+  const [editando, setEditando] = useState(false)
+  const [cedula, setCedula] = useState('')
+  const [cedulaVerificada, setCedulaVerificada] = useState(false)
+  const [nuevoNombre, setNuevoNombre] = useState('')
+  const [nuevoTipo, setNuevoTipo] = useState('')
+  const [nuevoMunicipio, setNuevoMunicipio] = useState('')
+  const [nuevoDepartamento, setNuevoDepartamento] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const [errorEdicion, setErrorEdicion] = useState('')
   const router = useRouter()
 
   useEffect(() => {
@@ -67,6 +84,59 @@ export default function Perfil() {
 
     setPerfil({ ...perfil, especialidad_activa: nuevaEspecialidad })
     setCambiandoTipo(false)
+  }
+
+  async function verificarCedula() {
+  if (!cedula.trim()) {
+    setErrorEdicion('Ingresa tu número de cédula')
+    return
+  }
+
+  // Si ya tiene cédula registrada, verificar que coincida
+  if (perfil.cedula && perfil.cedula !== cedula) {
+    setErrorEdicion('La cédula no coincide con la registrada')
+    return
+  }
+
+  setErrorEdicion('')
+  setCedulaVerificada(true)
+  setNuevoNombre(perfil.nombre || '')
+  setNuevoTipo(perfil.tipo || 'agricultor')
+  setNuevoMunicipio(perfil.municipio || '')
+  setNuevoDepartamento(perfil.departamento || '')
+}
+
+  async function guardarCambios() {
+    if (!nuevoNombre || !nuevoTipo || !nuevoMunicipio) {
+      setErrorEdicion('Completa todos los campos')
+      return
+    }
+
+    setGuardando(true)
+    await supabase
+      .from('perfiles')
+      .update({
+        nombre: nuevoNombre,
+        tipo: nuevoTipo,
+        municipio: nuevoMunicipio,
+        departamento: nuevoDepartamento,
+        cedula: cedula,
+      })
+      .eq('id', perfil.id)
+
+    setPerfil({
+      ...perfil,
+      nombre: nuevoNombre,
+      tipo: nuevoTipo,
+      municipio: nuevoMunicipio,
+      departamento: nuevoDepartamento,
+      cedula: cedula,
+    })
+
+    setEditando(false)
+    setCedulaVerificada(false)
+    setCedula('')
+    setGuardando(false)
   }
 
   if (cargando) {
@@ -150,6 +220,132 @@ export default function Perfil() {
               <p className="text-xs text-gray-400 mt-2">
                 Cambia qué canal ves cuando entras al chat.
               </p>
+            </div>
+          )}
+          
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={() => setEditando(!editando)}
+              className="text-xs font-semibold px-4 py-2 rounded-xl border transition-all"
+              style={{
+                borderColor: editando ? '#FCA5A5' : '#D1FAE5',
+                color: editando ? '#DC2626' : '#065F46',
+                backgroundColor: editando ? '#FEF2F2' : '#F0FDF4'
+              }}
+            >
+              {editando ? '✕ Cancelar' : '✏️ Editar perfil'}
+            </button>
+          </div>
+
+          {editando && (
+            <div className="border border-green-100 rounded-xl p-5 mb-6">
+              {!cedulaVerificada ? (
+                <div>
+                  <p className="text-sm font-semibold text-green-800 mb-1">
+                    🔐 Verificación de identidad
+                  </p>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Ingresa tu número de cédula para editar tu perfil
+                  </p>
+                  {errorEdicion && (
+                    <p className="text-xs text-red-500 mb-3">{errorEdicion}</p>
+                  )}
+                  <input
+                    type="text"
+                    placeholder="Número de cédula"
+                    value={cedula}
+                    onChange={(e) => setCedula(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-green-400 mb-3"
+                  />
+                  <button
+                    onClick={verificarCedula}
+                    style={{ backgroundColor: '#1B4332' }}
+                    className="w-full text-white font-semibold py-2 rounded-xl hover:opacity-90 transition-opacity text-sm"
+                  >
+                    Verificar cédula
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  <p className="text-sm font-semibold text-green-800">
+                    ✏️ Editar información
+                  </p>
+                  {errorEdicion && (
+                    <p className="text-xs text-red-500">{errorEdicion}</p>
+                  )}
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Nombre completo</label>
+                    <input
+                      type="text"
+                      value={nuevoNombre}
+                      onChange={(e) => setNuevoNombre(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-800 focus:outline-none focus:border-green-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Tipo de actividad</label>
+                    <div className="flex gap-2">
+                      {[
+                        { valor: 'agricultor', label: '🌾 Agricultor' },
+                        { valor: 'ganadero', label: '🐄 Ganadero' },
+                        { valor: 'ambos', label: '🌾🐄 Ambos' },
+                      ].map((op) => (
+                        <button
+                          key={op.valor}
+                          onClick={() => setNuevoTipo(op.valor)}
+                          className="flex-1 py-2 rounded-xl text-xs font-semibold border-2 transition-all"
+                          style={{
+                            borderColor: nuevoTipo === op.valor ? '#1B4332' : '#E5E7EB',
+                            backgroundColor: nuevoTipo === op.valor ? '#F0FDF4' : 'white',
+                            color: nuevoTipo === op.valor ? '#1B4332' : '#6B7280'
+                          }}
+                        >
+                          {op.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Departamento</label>
+                    <select
+                      value={nuevoDepartamento}
+                      onChange={(e) => {
+                        setNuevoDepartamento(e.target.value)
+                        setNuevoMunicipio('')
+                      }}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-800 focus:outline-none focus:border-green-400 bg-white"
+                    >
+                      <option value="">Selecciona tu departamento</option>
+                      {Object.keys(DEPARTAMENTOS_MUNICIPIOS).map((dep) => (
+                        <option key={dep} value={dep}>{dep}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {nuevoDepartamento && (
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">Municipio</label>
+                      <select
+                        value={nuevoMunicipio}
+                        onChange={(e) => setNuevoMunicipio(e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-800 focus:outline-none focus:border-green-400 bg-white"
+                      >
+                        <option value="">Selecciona tu municipio</option>
+                        {DEPARTAMENTOS_MUNICIPIOS[nuevoDepartamento].map((mun) => (
+                          <option key={mun} value={mun}>{mun}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <button
+                    onClick={guardarCambios}
+                    disabled={guardando}
+                    style={{ backgroundColor: '#2D6A4F' }}
+                    className="w-full text-white font-semibold py-2 rounded-xl hover:opacity-90 transition-opacity text-sm disabled:opacity-50"
+                  >
+                    {guardando ? 'Guardando...' : 'Guardar cambios'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
