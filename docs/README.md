@@ -119,10 +119,12 @@ Posts del foro comunitario.
 | `id` | int8 | PK autoincremental |
 | `titulo` | text | Título de la publicación |
 | `contenido` | text | Cuerpo del post |
-| `autor` | text | Nombre del autor (texto libre — pendiente vincular a usuario_id) |
+| `autor` | text | Nombre del autor (texto para mostrar) |
+| `autor_id` | uuid | FK → auth.users.id (vinculado desde v1.5.0) |
+| `foto_url` | text | URL pública de foto en Supabase Storage (opcional) |
 | `created_at` | timestamp | Fecha de creación |
 
-> ⚠️ **Deuda técnica:** El campo `autor` es texto libre. En v1.5+ se debe agregar `autor_id` (uuid → perfiles.usuario_id) para vincular publicaciones a usuarios reales.
+> ⚠️ **Deuda técnica:** Publicaciones anteriores a v1.5.0 tienen `autor_id = null`.
 
 ### Tabla: `respuestas`
 Respuestas a publicaciones del foro.
@@ -131,9 +133,22 @@ Respuestas a publicaciones del foro.
 |---|---|---|
 | `id` | int8 | PK autoincremental |
 | `contenido` | text | Texto de la respuesta |
-| `autor` | text | Nombre del autor (texto libre) |
+| `autor` | text | Nombre del autor (texto para mostrar) |
+| `autor_id` | uuid | FK → auth.users.id (vinculado desde v1.5.0) |
 | `publicacion_id` | int8 | FK → publicaciones.id |
 | `created_at` | timestamp | Fecha de creación |
+
+### Tabla: `likes`
+Likes de publicaciones del foro.
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `id` | int8 | PK autoincremental |
+| `usuario_id` | uuid | FK → auth.users.id |
+| `publicacion_id` | int8 | FK → publicaciones.id |
+| `created_at` | timestamp | Fecha de creación |
+
+> Un usuario solo puede dar like una vez por publicación (validado desde el código).
 
 ### Tabla: `citas`
 Solicitudes de citas virtuales y visitas a finca.
@@ -163,6 +178,17 @@ Mensajes del chat en tiempo real.
 | `created_at` | timestamp | Fecha de creación |
 
 > ⚠️ **Deuda técnica:** Falta `autor_id` para vincular mensajes a usuarios reales.
+
+## Almacenamiento de archivos (Supabase Storage)
+
+### Bucket: `fotos-foro`
+- **Tipo:** Público
+- **Propósito:** Almacena fotos subidas en publicaciones del foro
+- **Políticas:** Creadas via SQL Editor en `storage.objects`
+  - INSERT para usuarios autenticados
+  - SELECT para todos (público)
+- **Nombre de archivos:** `{usuario_id}-{timestamp}.{extension}`
+- **URL pública:** `https://[project].supabase.co/storage/v1/object/public/fotos-foro/{archivo}`
 
 ---
 
@@ -205,24 +231,28 @@ agrovetecta/
 │   ├── admin/
 │   │   └── page.js            → Panel de administración (solo admins)
 │   ├── agenda/
-│   │   └── page.js            → Formulario de citas y visitas
+│   │   └── page.js            → Formulario de citas y visitas (protegida)
 │   ├── chat/
-│   │   └── page.js            → Chat en tiempo real por canal
+│   │   └── page.js            → Chat en tiempo real por canal (protegida)
 │   ├── esperando/
 │   │   └── page.js            → Pantalla para usuarios pendientes
 │   ├── foro/
-│   │   ├── page.js            → Lista de publicaciones
+│   │   ├── page.js            → Lista de publicaciones con fotos y likes
 │   │   └── [id]/
-│   │       └── page.js        → Detalle de publicación + respuestas
+│   │       └── page.js        → Detalle de publicación + respuestas + likes
 │   ├── login/
 │   │   └── page.js            → Formulario de inicio de sesión
 │   ├── perfil/
-│   │   └── page.js            → Perfil del usuario con edición
+│   │   └── page.js            → Perfil del usuario con edición y cédula
 │   ├── registro/
 │   │   └── page.js            → Registro multi-paso (3 pasos)
 │   ├── globals.css            → Estilos globales + import Tailwind v4
-│   ├── layout.js              → Layout raíz con Navbar
+│   ├── layout.js              → Layout raíz con Navbar y ScrollToTop
 │   └── page.js                → Landing page
+├── docs/                      → Documentación técnica del proyecto
+│   ├── README.md              → Arquitectura y modelo de datos
+│   ├── CHANGELOG.md           → Historial de versiones
+│   └── GUIA_DESARROLLADOR.md  → Guía práctica para desarrolladores
 ├── .env.local                 → Variables de entorno (NO subir a Git)
 ├── .gitignore                 → Archivos excluidos de Git
 ├── next.config.mjs            → Configuración de Next.js

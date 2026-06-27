@@ -4,6 +4,66 @@ Registro completo de cambios por versión, incluyendo funciones nuevas, ajustes 
 
 ---
 
+## v1.5.0 — Fotos en foro, likes y autor_id vinculado
+**Fecha:** Junio 2026
+**Rama:** `feature/mejoras-datos-foro`
+
+### ✅ Funciones nuevas
+- **Fotos en publicaciones del foro**
+  - Los usuarios pueden adjuntar una foto al crear una publicación
+  - Preview de la foto antes de publicar con opción de quitar
+  - Las fotos se almacenan en Supabase Storage (bucket `fotos-foro`)
+  - La URL pública se guarda en `publicaciones.foto_url`
+  - Las fotos se muestran en el feed del foro y en el detalle de la publicación
+  - Archivos: `app/foro/page.js`, `app/foro/[id]/page.js`
+
+- **Sistema de likes**
+  - Botón de like (🤍/❤️) en cada publicación del foro
+  - Contador de likes visible en el feed y en el detalle
+  - Un usuario solo puede dar like una vez por publicación
+  - El like se puede quitar haciendo clic de nuevo
+  - Funciona tanto en el feed como dentro del detalle de la publicación
+  - Archivos: `app/foro/page.js`, `app/foro/[id]/page.js`
+
+- **Vinculación de publicaciones a usuario real (`autor_id`)**
+  - Al publicar, se guarda el `autor_id` (uuid del usuario en Supabase Auth)
+  - El nombre del autor se obtiene automáticamente del perfil — campo de nombre no editable
+  - El perfil ahora busca publicaciones por `autor_id` en lugar de por nombre de texto
+  - Archivos: `app/foro/page.js`, `app/perfil/page.js`
+
+- **Vinculación de respuestas a usuario real (`autor_id`)**
+  - Al responder, se guarda el `autor_id`
+  - El nombre del autor se obtiene automáticamente del perfil
+  - Campo de nombre no editable cuando hay sesión activa
+  - Archivo: `app/foro/[id]/page.js`
+
+### 🔧 Cambios no planificados
+- **Supabase Storage RLS requirió políticas SQL manuales**
+  - Las políticas creadas desde la interfaz de Supabase no funcionaron correctamente
+  - Se crearon mediante SQL Editor con `CREATE POLICY` directamente en `storage.objects`
+  - Las políticas de interfaz pueden interferir — verificar desde SQL si hay problemas
+
+- **Botón de like dentro de `<Link>` no funcionaba**
+  - El componente `<Link>` de Next.js interceptaba el clic antes que el botón
+  - Solución: separar la tarjeta en dos bloques — `<Link>` para el contenido y `<div>` separado para el like fuera del Link
+
+- **Campo `foto_url` agregado a tabla `publicaciones`**
+  - Tipo `text`, valor por defecto vacío
+  - Almacena la URL pública de Supabase Storage
+
+- **Campo `autor_id` agregado a tablas `publicaciones` y `respuestas`**
+  - Tipo `uuid`, vinculado a `auth.users.id`
+  - Las publicaciones anteriores tienen `autor_id = null` — no afecta el funcionamiento
+
+### ⚠️ Deudas técnicas identificadas
+- Las publicaciones antiguas (anteriores a v1.5.0) tienen `autor_id = null`
+- No hay límite de tamaño para las fotos subidas
+- No hay validación de tipo de archivo más allá de `accept="image/*"`
+- El perfil aún busca citas por nombre de texto — pendiente vincular con `usuario_id`
+- No hay forma de eliminar una publicación desde la app
+
+---
+
 ## v1.4.0 — Perfil editable y selector de especialidad
 **Fecha:** Junio 2026
 **Rama:** `feature/mejoras-perfil-admin`
