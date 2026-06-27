@@ -56,7 +56,7 @@ export default function Perfil() {
         const { data: pubs } = await supabase
           .from('publicaciones')
           .select('*')
-          .eq('autor', nombre)
+          .eq('autor_id', user.id)
           .order('created_at', { ascending: false })
 
         const { data: citasData } = await supabase

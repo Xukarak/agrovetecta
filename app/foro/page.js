@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import Link from 'next/link'
 
@@ -13,9 +13,22 @@ export default function Foro() {
   const [enviando, setEnviando] = useState(false)
 
   // Cargar publicaciones al abrir la página
-  useState(() => {
-    cargarPublicaciones()
-  })
+  useEffect(() => {
+    async function init() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        const { data: perfil } = await supabase
+          .from('perfiles')
+          .select('nombre')
+          .eq('usuario_id', session.user.id)
+          .single()
+
+        if (perfil?.nombre) setAutor(perfil.nombre)
+      }
+      await cargarPublicaciones()
+    }
+    init()
+  }, [])
 
   async function cargarPublicaciones() {
     const { data } = await supabase
@@ -31,9 +44,16 @@ export default function Foro() {
     if (!titulo || !contenido || !autor) return
     
     setEnviando(true)
+    const { data: { session } } = await supabase.auth.getSession()
+
     const { error } = await supabase
       .from('publicaciones')
-      .insert([{ titulo, contenido, autor }])
+      .insert([{
+        titulo,
+        contenido,
+        autor,
+        autor_id: session?.user?.id || null
+      }])
 
     if (!error) {
       setTitulo('')
@@ -62,12 +82,13 @@ export default function Foro() {
           </h2>
           
           <div className="flex flex-col gap-3">
-            <input
+           <input
               type="text"
               placeholder="Tu nombre"
               value={autor}
               onChange={(e) => setAutor(e.target.value)}
-              className="border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-green-400"
+              readOnly={!!autor}
+              className={`border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-green-400 ${autor ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             />
             <input
               type="text"

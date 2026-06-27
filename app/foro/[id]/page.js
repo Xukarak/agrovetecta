@@ -17,6 +17,19 @@ export default function DetallePublicacion({ params }) {
     async function init() {
       const { id: paramId } = await params
       setId(paramId)
+
+      // Obtener nombre del usuario conectado
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        const { data: perfil } = await supabase
+          .from('perfiles')
+          .select('nombre')
+          .eq('usuario_id', session.user.id)
+          .single()
+
+        setAutor(perfil?.nombre || session.user.user_metadata?.nombre || '')
+      }
+
       await cargarDatos(paramId)
     }
     init()
@@ -45,9 +58,16 @@ export default function DetallePublicacion({ params }) {
     if (!contenido || !autor) return
 
     setEnviando(true)
+    const { data: { session } } = await supabase.auth.getSession()
+
     await supabase
       .from('respuestas')
-      .insert([{ contenido, autor, publicacion_id: id }])
+      .insert([{
+        contenido,
+        autor,
+        publicacion_id: id,
+        autor_id: session?.user?.id || null
+      }])
 
     setContenido('')
     setAutor('')
@@ -149,7 +169,8 @@ export default function DetallePublicacion({ params }) {
               placeholder="Tu nombre"
               value={autor}
               onChange={(e) => setAutor(e.target.value)}
-              className="border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-green-400"
+              readOnly={!!autor}
+              className={`border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-green-400 ${autor ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             />
             <textarea
               placeholder="Escribe tu respuesta..."
